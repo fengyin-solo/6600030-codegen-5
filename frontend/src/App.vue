@@ -3,6 +3,7 @@ import { onMounted } from 'vue';
 import FEACanvas from './components/FEACanvas.vue';
 import ElementInfo from './components/ElementInfo.vue';
 import MeshControls from './components/MeshControls.vue';
+import SnapshotList from './components/SnapshotList.vue';
 import { useFEAStore } from './store/fea';
 
 const store = useFEAStore();
@@ -36,6 +37,7 @@ onMounted(() => {
       <div class="w-[25%] min-w-[260px] bg-slate-900 border-l border-slate-800 p-3 flex flex-col gap-3 overflow-y-auto">
         <MeshControls />
         <ElementInfo />
+        <SnapshotList />
       </div>
     </div>
 

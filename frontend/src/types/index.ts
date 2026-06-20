@@ -37,3 +37,16 @@ export interface FEAResult {
   maxStress: number;
   reactionForces: { nodeId: number; fx: number; fy: number }[];
 }
+
+export interface FEASnapshot {
+  id: string;
+  name: string;
+  createdAt: number;
+  presetName: string;
+  heatmapMode: 'stress' | 'strain' | 'force';
+  selectedElement: number | null;
+  showDeformed: boolean;
+  deformationScale: number;
+  model: FEAModel;
+  result: FEAResult;
+}

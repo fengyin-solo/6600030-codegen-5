@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { FEAModel, FEAResult } from '../types';
+import type { FEAModel, FEAResult, FEASnapshot } from '../types';
 import {
   solve as feaSolve,
   presetCantileverBeam,
@@ -17,6 +17,7 @@ export const useFEAStore = defineStore('fea', () => {
   const deformationScale = ref(10);
   const selectedElement = ref<number | null>(null);
   const heatmapMode = ref<'stress' | 'strain' | 'force'>('stress');
+  const snapshots = ref<FEASnapshot[]>([]);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   function loadPreset(name: string) {
@@ -40,6 +41,66 @@ export const useFEAStore = defineStore('fea', () => {
 
   function solve() {
     result.value = feaSolve(model.value);
+    if (result.value) {
+      saveSnapshot();
+    }
+  }
+
+  function saveSnapshot() {
+    if (!result.value) return;
+    const now = Date.now();
+    const id = `snap_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    const presetNames: Record<string, string> = {
+      cantilever: '悬臂梁',
+      bridge: '桥梁桁架',
+      frame: '简单框架',
+    };
+    const timeStr = new Date(now).toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    const snapshot: FEASnapshot = {
+      id,
+      name: `${presetNames[selectedPreset.value] || selectedPreset.value} - ${timeStr}`,
+      createdAt: now,
+      presetName: selectedPreset.value,
+      heatmapMode: heatmapMode.value,
+      selectedElement: selectedElement.value,
+      showDeformed: showDeformed.value,
+      deformationScale: deformationScale.value,
+      model: JSON.parse(JSON.stringify(model.value)),
+      result: JSON.parse(JSON.stringify(result.value)),
+    };
+    snapshots.value.unshift(snapshot);
+  }
+
+  function loadSnapshot(id: string) {
+    const snap = snapshots.value.find((s) => s.id === id);
+    if (!snap) return;
+    model.value = JSON.parse(JSON.stringify(snap.model));
+    result.value = JSON.parse(JSON.stringify(snap.result));
+    selectedPreset.value = snap.presetName;
+    heatmapMode.value = snap.heatmapMode;
+    selectedElement.value = snap.selectedElement;
+    showDeformed.value = snap.showDeformed;
+    deformationScale.value = snap.deformationScale;
+  }
+
+  function deleteSnapshot(id: string) {
+    const idx = snapshots.value.findIndex((s) => s.id === id);
+    if (idx >= 0) snapshots.value.splice(idx, 1);
+  }
+
+  function clearSnapshots() {
+    snapshots.value = [];
+  }
+
+  function renameSnapshot(id: string, name: string) {
+    const snap = snapshots.value.find((s) => s.id === id);
+    if (snap) snap.name = name;
   }
 
   function toggleDeformed() {
@@ -118,6 +179,7 @@ export const useFEAStore = defineStore('fea', () => {
     deformationScale,
     selectedElement,
     heatmapMode,
+    snapshots,
     maxStress,
     maxDisplacement,
     elementColors,
@@ -128,5 +190,10 @@ export const useFEAStore = defineStore('fea', () => {
     setHeatmapMode,
     addLoad,
     toggleFixed,
+    saveSnapshot,
+    loadSnapshot,
+    deleteSnapshot,
+    clearSnapshots,
+    renameSnapshot,
   };
 });
