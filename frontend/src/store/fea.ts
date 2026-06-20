@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { FEAModel, FEAResult, FEASnapshot } from '../types';
 import {
   solve as feaSolve,
@@ -9,6 +9,29 @@ import {
   jetColormap,
 } from '../utils/fea-solver';
 
+const SNAPSHOT_STORAGE_KEY = 'fea_snapshots_v1';
+
+function loadSnapshotsFromStorage(): FEASnapshot[] {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as FEASnapshot[];
+    return [];
+  } catch (e) {
+    console.warn('[FEA Store] Failed to load snapshots from localStorage:', e);
+    return [];
+  }
+}
+
+function persistSnapshots(snapshots: FEASnapshot[]) {
+  try {
+    localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshots));
+  } catch (e) {
+    console.warn('[FEA Store] Failed to persist snapshots to localStorage:', e);
+  }
+}
+
 export const useFEAStore = defineStore('fea', () => {
   const model = ref<FEAModel>({ nodes: [], elements: [], loads: [] });
   const result = ref<FEAResult | null>(null);
@@ -17,7 +40,13 @@ export const useFEAStore = defineStore('fea', () => {
   const deformationScale = ref(10);
   const selectedElement = ref<number | null>(null);
   const heatmapMode = ref<'stress' | 'strain' | 'force'>('stress');
-  const snapshots = ref<FEASnapshot[]>([]);
+  const snapshots = ref<FEASnapshot[]>(loadSnapshotsFromStorage());
+
+  watch(
+    snapshots,
+    (val) => persistSnapshots(val),
+    { deep: true }
+  );
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   function loadPreset(name: string) {
